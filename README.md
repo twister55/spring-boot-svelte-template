@@ -39,7 +39,8 @@ Environment variables:
 ./gradlew check               # build + tests
 
 cd web
-pnpm run lint                 # prettier --check + eslint
+pnpm run lint                 # svelte-kit sync + prettier --check + eslint
+pnpm run lint:fix             # svelte-kit sync + prettier --write + eslint --fix
 pnpm run format                # prettier --write
 pnpm run check                 # svelte-check
 pnpm run test                  # vitest (node + browser projects) + playwright e2e
@@ -62,6 +63,18 @@ pnpm run test                  # vitest (node + browser projects) + playwright e
 
 - Component tests are named `*.svelte.test.ts` (run in a real browser via the vitest browser
   project); everything else `*.test.ts` runs in Node.
+- Formatting is Prettier: tabs, single quotes, trailing commas, `printWidth` 120, LF line
+  endings (`web/prettier.config.js`).
+- ESLint (`web/eslint.config.js`, flat config) enforces the code style beyond formatting, e.g.:
+  - imports are grouped and alphabetized (`import-x/order`), with `$lib/*` treated as internal
+    and `$app/*` after external packages; unused imports/vars are auto-removed on `--fix`
+    (prefix with `_` to keep them).
+  - type-only imports use inline `type` syntax (`import { fn, type A }`).
+  - `$lib/api` is a barrel — import from `$lib/api`, not its internal files.
+  - Svelte blocks must be `<script lang="ts">`, buttons need an explicit `type`, and multi-line
+    inline markup handlers should be extracted to named functions.
+  - `eqeqeq`, `prefer-template`, `object-shorthand`, no nested ternaries, no `console.log`
+    (only `warn`/`error`).
 
 ## License
 

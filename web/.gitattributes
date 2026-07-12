@@ -1,0 +1,3 @@
+# Normalize line endings so prettier's endOfLine: 'lf' stays satisfied across
+# platforms (Windows checkouts with core.autocrlf=true would otherwise fail lint).
+* text=auto eol=lf
