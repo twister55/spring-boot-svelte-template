@@ -1,0 +1,118 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'jacoco'
+    id 'com.github.node-gradle.node' version '7.1.0'
+    id 'org.springframework.boot' version '4.1.0'
+}
+
+group = 'dev.template'
+version = '0.0.1'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+ext {
+    springBootVersion = '4.1.0'
+}
+
+dependencies {
+    implementation platform("org.springframework.boot:spring-boot-dependencies:$springBootVersion")
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // Spring Boot 4 moved TestRestTemplate into the spring-boot-resttestclient module
+    // (requires spring-boot-restclient); it used to ship with spring-boot-test.
+    testImplementation 'org.springframework.boot:spring-boot-resttestclient'
+    testImplementation 'org.springframework.boot:spring-boot-restclient'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jacoco {
+    toolVersion = '0.8.15'
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Frontend: web/ is a SvelteKit SPA built by pnpm and served by Spring Boot
+// as static resources (see conf/WebConfig for the SPA fallback).
+// ---------------------------------------------------------------------------
+
+node {
+    version = '24.18.0'
+    download = true
+    nodeProjectDir = file("${project.projectDir}/web")
+}
+
+tasks.register('buildWeb', PnpmTask) {
+    dependsOn(tasks.named('pnpmInstall'))
+    group = 'Build'
+    description = 'Builds the SvelteKit app'
+    workingDir = file("${project.projectDir}/web")
+    args = ['run', 'build']
+    inputs.files(fileTree(workingDir) {
+        include 'src/**'
+        include 'static/**'
+        include 'svelte.config.*'
+        include 'vite.config.*'
+        include 'package.json'
+        include 'pnpm-lock.yaml'
+    })
+    outputs.dir("${project.projectDir}/web/build")
+}
+
+tasks.register('copyWebResources', Copy) {
+    dependsOn(tasks.named('buildWeb'))
+    from "${project.projectDir}/web/build"
+    into "${layout.buildDirectory.asFile.get()}/resources/main/static"
+}
+
+tasks.named('processResources', ProcessResources) {
+    dependsOn(tasks.named('copyWebResources'))
+}
+
+// ---------------------------------------------------------------------------
+// Run
+// ---------------------------------------------------------------------------
+
+String serverPort = System.getenv('SERVER_PORT')
+
+bootRun {
+    // pass through secret.* and spring.* properties from gradle.properties / -D
+    systemProperties(providers.gradlePropertiesPrefixedBy('secret.').getOrElse(Collections.emptyMap()))
+    systemProperties(providers.systemPropertiesPrefixedBy('secret.').getOrElse(Collections.emptyMap()))
+    systemProperties(providers.gradlePropertiesPrefixedBy('spring.').getOrElse(Collections.emptyMap()))
+    systemProperties(providers.systemPropertiesPrefixedBy('spring.').getOrElse(Collections.emptyMap()))
+
+    getSystemProperties().computeIfAbsent('spring.profiles.active', k -> 'local')
+    if (serverPort != null) {
+        getSystemProperties().put('server.port', serverPort)
+    }
+}
+
+springBoot {
+    mainClass = 'dev.template.app.Application'
+}
+
+bootJar {
+    archiveFileName = "${rootProject.name}-${version}-boot.jar"
+}

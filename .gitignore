@@ -1,0 +1,11 @@
+.gradle/
+build/
+out/
+.idea/
+*.iml
+.volumes/
+gradle.properties
+
+web/node_modules/
+web/build/
+web/.svelte-kit/
