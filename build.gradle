@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'jacoco'
+    id 'org.openapi.generator' version '7.23.0'
     id 'com.github.node-gradle.node' version '7.1.0'
     id 'org.springframework.boot' version '4.1.0'
 }
@@ -29,6 +30,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+    // required by the OpenAPI-generated controller interfaces
+    implementation 'io.swagger.core.v3:swagger-annotations:2.2.52'
+    implementation 'org.openapitools:jackson-databind-nullable:0.2.10'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     // Spring Boot 4 moved TestRestTemplate into the spring-boot-resttestclient module
     // (requires spring-boot-restclient); it used to ship with spring-boot-test.
@@ -49,6 +54,47 @@ jacocoTestReport {
     reports {
         xml.required = true
         html.required = true
+    }
+    // keep generated OpenAPI classes (payload models, ApiUtil) out of coverage numbers
+    classDirectories.setFrom(files(classDirectories.files.collect {
+        fileTree(dir: it, excludes: ['dev/template/app/rest/payload/**', 'dev/template/app/rest/ApiUtil*'])
+    }))
+}
+
+// ---------------------------------------------------------------------------
+// OpenAPI: schema.yaml is the single source of the REST API.
+// Controller interfaces are generated into build/generated/openapi (its own
+// directory — build/generated itself would overlap compileJava's
+// build/generated/sources and break up-to-date checks / build caching) and
+// implemented by hand-written classes in src/main/java/dev/template/app/rest.
+// ---------------------------------------------------------------------------
+
+openApiGenerate {
+    generatorName = 'spring'
+    inputSpec = "$layout.projectDirectory/schema.yaml"
+    outputDir = layout.buildDirectory.dir('generated/openapi').get().asFile.path
+    apiPackage = 'dev.template.app.rest'
+    modelPackage = 'dev.template.app.rest.payload'
+    additionalProperties = [
+            'apiNameSuffix'          : 'Controller',
+            'interfaceOnly'          : 'true',
+            'skipDefaultInterface'   : 'true',
+            'useResponseEntity'      : 'false',
+            'useJakartaEe'           : 'true',
+            'useTags'                : 'true',
+            'hideGenerationTimestamp': 'true',
+    ]
+}
+
+sourceSets {
+    main {
+        java {
+            // task provider carries the openApiGenerate dependency (builtBy) for
+            // every consumer of main sources, not just compileJava
+            srcDir(tasks.named('openApiGenerate').map {
+                layout.buildDirectory.dir('generated/openapi/src/main/java').get()
+            })
+        }
     }
 }
 
@@ -74,10 +120,17 @@ tasks.register('buildWeb', PnpmTask) {
         include 'static/**'
         include 'svelte.config.*'
         include 'vite.config.*'
+        include 'openapi-ts.config.*'
         include 'package.json'
         include 'pnpm-lock.yaml'
+        // written by openapi-ts during the build itself — schema.yaml is the real input
+        exclude 'src/lib/api/generated/**'
     })
+    inputs.file("$layout.projectDirectory/schema.yaml")
     outputs.dir("${project.projectDir}/web/build")
+    // openapi-ts writes the client as a side effect of `pnpm run build`; declaring
+    // it as an output makes gradle re-run the task when the directory is deleted
+    outputs.dir("${project.projectDir}/web/src/lib/api/generated")
 }
 
 tasks.register('copyWebResources', Copy) {
