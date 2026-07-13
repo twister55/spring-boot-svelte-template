@@ -51,10 +51,10 @@ pnpm run test                 # vitest (node + browser projects) + playwright e2
 
 - `src/main/java/dev/template/app/` — backend
   - `Application.java` — entry point
-  - `config/WebConfig.java` — SPA fallback: serves `index.html` for unknown, non-API,
-    extensionless routes so deep links into the SvelteKit app work on full page load
+  - `config/WebConfig.java` — SPA fallback: serves `index.html` for unknown, non-API routes
+    without a file extension so deep links into the SvelteKit app work on full page load
 - `src/test/java/dev/template/app/` — `TestBase` (`@SpringBootTest`, random port, `test` profile),
-  `ApplicationTest`, `config/WebConfigTest`
+  `ApplicationTest`, `config/SpaFallbackResolverTest`
 - `web/` — SvelteKit SPA (adapter-static, served by Spring Boot as static resources)
   - `src/lib/components/` — `counter.svelte`, `header.svelte` with matching `*.svelte.test.ts`
   - `src/routes/` — `+page.svelte`, `about/+page.svelte`

@@ -29,6 +29,15 @@ class SpaFallbackResolverTest extends TestBase {
     }
 
     @Test
+    void deepLinkWithDotInMiddleSegmentFallsBackToIndexHtml() {
+        // a dot inside a non-final segment (version, email, slug) is not a file extension
+        ResponseEntity<String> response = rest.getForEntity("/release/1.2/notes", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("<!doctype html>");
+    }
+
+    @Test
     void missingAssetWithExtensionIsPlainNotFound() {
         ResponseEntity<String> response = rest.getForEntity("/assets/missing.js", String.class);
 
