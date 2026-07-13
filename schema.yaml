@@ -5,38 +5,106 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
-  /api/v1/status:
+  /api/v1/todos:
     get:
       tags:
-        - status
-      operationId: getStatus
+        - todo
+      operationId: getTodos
       responses:
         '200':
           description: OK
           content:
             'application/json':
               schema:
-                $ref: '#/components/schemas/StatusDto'
+                type: array
+                items:
+                  $ref: '#/components/schemas/TodoDto'
         default:
           $ref: '#/components/responses/Error'
-  /api/v1/status/{code}:
+    post:
+      tags:
+        - todo
+      operationId: createTodo
+      requestBody:
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/TodoWriteDto'
+      responses:
+        '201':
+          description: Created
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/TodoDto'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/todos/{id}:
     get:
       tags:
-        - status
-      operationId: getStatusByCode
+        - todo
+      operationId: getTodo
       parameters:
-        - name: code
+        - name: id
           in: path
           required: true
           schema:
-            type: string
+            type: integer
+            format: int64
       responses:
         '200':
           description: OK
           content:
             'application/json':
               schema:
-                $ref: '#/components/schemas/StatusDto'
+                $ref: '#/components/schemas/TodoDto'
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags:
+        - todo
+      operationId: updateTodo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/TodoWriteDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/TodoDto'
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags:
+        - todo
+      operationId: deleteTodo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
         '404':
           $ref: '#/components/responses/Error'
         default:
@@ -44,13 +112,32 @@ paths:
 
 components:
   schemas:
-    StatusDto:
+    TodoDto:
+      allOf:
+        - $ref: '#/components/schemas/TodoWriteDto'
+        - type: object
+          required:
+            - id
+            - createdAt
+          properties:
+            id:
+              type: integer
+              format: int64
+            createdAt:
+              type: string
+              format: date-time
+
+    TodoWriteDto:
       type: object
       required:
-        - status
+        - title
+        - completed
       properties:
-        status:
+        title:
           type: string
+          minLength: 1
+        completed:
+          type: boolean
 
     ErrorResponse:
       type: object

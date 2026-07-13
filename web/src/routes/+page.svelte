@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { getStatus } from '$lib/api';
 	import Counter from '$lib/components/counter.svelte';
 	import welcomeFallback from '$lib/images/svelte-welcome.png';
 	import welcome from '$lib/images/svelte-welcome.webp';
@@ -27,17 +26,6 @@
 	</h2>
 
 	<Counter />
-
-	<p class="status">
-		backend:
-		{#await getStatus()}
-			checking…
-		{:then { status }}
-			{status}
-		{:catch}
-			unavailable
-		{/await}
-	</p>
 </section>
 
 <style>
@@ -67,11 +55,5 @@
 		height: 100%;
 		top: 0;
 		display: block;
-	}
-
-	.status {
-		margin-top: 2rem;
-		font-size: 0.875rem;
-		opacity: 0.7;
 	}
 </style>

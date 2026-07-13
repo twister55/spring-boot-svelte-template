@@ -100,6 +100,19 @@ pnpm run test:e2e -- -g "test name"                                       # or p
 To change the API: edit `schema.yaml`, regenerate (or just build), fix what the compilers flag on
 both sides.
 
+## Todo list (reference feature)
+
+The todo list (`/todos`) is a working example of the full stack wired end to end: a Flyway-managed
+`todo` table, a `TodoRepository` (`JdbcClient`), `TodoService`, a MapStruct mapper, the
+`TodoController` endpoints in `schema.yaml` (list, get-by-id, create, update, delete), and a Svelte
+page/component driving them. It's meant to be renamed into your own entity rather than kept as-is
+— the naming is deliberately single-word and consistent (`Todo`/`todo`/`todos`) across the DB
+table, Java classes, schema.yaml paths/schemas, and the frontend route/component, so renaming plus
+adjusting the fields is a mechanical find-and-replace. Touch: `V1__init.sql`, the `todo`
+paths/schemas in `schema.yaml`, `model/Todo.java`, `repository/TodoRepository.java`,
+`service/TodoService.java`, `rest/mapper/TodoMapper.java`, `rest/TodoControllerImpl.java`, their
+tests, and `web/src/lib/components/todo-list.svelte` + `web/src/routes/todos/`.
+
 ## Structure
 
 - `schema.yaml` — OpenAPI spec, the single source of the REST API (see above)
@@ -108,7 +121,8 @@ both sides.
   - `Application.java` — entry point
   - `config/WebConfig.java` — SPA fallback: serves `index.html` for unknown, non-API routes
     without a file extension so deep links into the SvelteKit app work on full page load
-  - `model/` — handwritten domain types; `service/` — business logic
+  - `model/` — handwritten domain types; `repository/` — data access (`JdbcClient`);
+    `service/` — business logic
   - `rest/` — implementations of the OpenAPI-generated controller interfaces
     - `mapper/` — MapStruct domain-to-DTO mappers sharing the central `MapperConfig` (see above)
     - `handlers/ExceptionHandlers.java` — the error contract: every error body is shaped into
@@ -120,14 +134,16 @@ both sides.
   and are overridable via `DB_URL`/`DB_USER`/`DB_PASSWORD`
 - `src/test/java/dev/template/app/` — `TestBase` (`@SpringBootTest`, random port, `test` profile,
   shared PostgreSQL Testcontainer via `@ServiceConnection` — requires Docker), `ApplicationTest`,
-  `DatabaseSchemaTest`, `config/SpaFallbackResolverTest`
+  `DatabaseSchemaTest`, `config/SpaFallbackResolverTest`, `rest/TodoControllerTest`,
+  `rest/mapper/TodoMapperTest`
 - `web/` — SvelteKit SPA (adapter-static, served by Spring Boot as static resources)
   - `src/lib/api/` — API layer: `index.ts` (barrel re-exporting the generated SDK + the error
     interceptor turning failures into `ApiError`), `error.ts`, `generated/` (gitignored output
     of `@hey-api/openapi-ts`)
-  - `src/lib/components/` — `counter.svelte`, `header.svelte` with matching `*.svelte.test.ts`
-  - `src/routes/` — `+page.svelte`, `about/+page.svelte`
-  - `src/routes/page.e2e.ts` — Playwright end-to-end test
+  - `src/lib/components/` — `counter.svelte`, `header.svelte`, `todo-list.svelte`, each with a
+    matching `*.svelte.test.ts`
+  - `src/routes/` — `+page.svelte`, `about/+page.svelte`, `todos/+page.svelte`
+  - `src/routes/page.e2e.ts`, `src/routes/todos/page.e2e.ts` — Playwright end-to-end tests
 
 ## Conventions
 
@@ -136,7 +152,8 @@ both sides.
 - Backend errors: throw an `ApplicationException` subclass (or add one bound to the right
   status) — `ExceptionHandlers` turns it into an `ErrorResponse` body.
 - Schema changes are new Flyway migrations (`V<next>__description.sql`); never edit an already
-  applied migration.
+  applied migration (an exception: `V1__init.sql` may still change during this template's own
+  pre-release development, since no real deployment has applied it yet).
 - Component tests are named `*.svelte.test.ts` (run in a real browser via the vitest browser
   project); everything else `*.test.ts` runs in Node.
 - Formatting is Prettier: tabs, single quotes, trailing commas, `printWidth` 120, LF line

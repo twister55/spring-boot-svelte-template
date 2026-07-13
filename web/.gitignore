@@ -24,5 +24,9 @@ vite.config.ts.timestamp-*
 # Playwright
 test-results
 
+# Vitest browser mode: failure screenshots/attachments
+__screenshots__
+.vitest-attachments
+
 # Generated OpenAPI client (rebuilt by `pnpm run openapi`)
 /src/lib/api/generated/
