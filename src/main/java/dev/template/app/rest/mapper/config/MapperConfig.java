@@ -1,4 +1,4 @@
-package dev.template.app.rest.mapper.confg;
+package dev.template.app.rest.mapper.config;
 
 import org.mapstruct.ReportingPolicy;
 
