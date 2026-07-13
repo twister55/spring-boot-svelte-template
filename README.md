@@ -3,7 +3,9 @@
 Fullstack project template: Java 25 + Spring Boot 4 backend, SvelteKit 2 (Svelte 5) SPA frontend
 with Tailwind CSS 4, built as a single Gradle project. Wired in out of the box: PostgreSQL with
 Flyway migrations, an OpenAPI-first API contract with clients/interfaces generated for both sides,
-MapStruct domain-to-DTO mapping, and Testcontainers-backed integration tests.
+MapStruct domain-to-DTO mapping, Testcontainers-backed integration tests, and opt-in build-time
+prerendering of static pages served as real HTML straight from Spring Boot (see
+[Static pages](#static-pages-build-time-prerendering)).
 
 ## Using this template
 
@@ -100,6 +102,67 @@ pnpm run test:e2e -- -g "test name"                                       # or p
 To change the API: edit `schema.yaml`, regenerate (or just build), fix what the compilers flag on
 both sides.
 
+## Static pages: build-time prerendering
+
+The app is an SPA by default (`ssr = false` / `prerender = false` in the root
+`web/src/routes/+layout.ts`), but any purely static page can opt into **build-time prerendering**:
+it is baked into a real HTML file during `vite build` and Spring Boot serves that file directly on
+a full page load — content is visible before a single byte of JavaScript arrives, and search
+engines see the actual page instead of an empty shell. Dynamic routes (like `/todos`) keep working
+as a regular SPA. The home page (`/`) and `/about` ship prerendered as working examples.
+
+### Marking a page static
+
+Add a `+page.ts` next to the page with both flags re-enabled:
+
+```ts
+// web/src/routes/about/+page.ts
+export const prerender = true;
+export const ssr = true; // without ssr the build bakes an empty shell, not the content
+```
+
+A page qualifies if it can be rendered once at build time, i.e. it does **not**:
+
+- call `/api` endpoints from `load` (the backend isn't running during the frontend build),
+- touch browser-only globals (`window`, `document`, `localStorage`) during render — inside
+  `onMount`/`$effect` is fine, those don't run at build time,
+- read `url.searchParams` (query strings can't be part of a static file),
+- have dynamic path parameters (`[slug]`) without prerender `entries`.
+
+Client-side interactivity is *not* a blocker: prerendered pages hydrate normally, so counters,
+menus, and other stateful components come alive once JS loads (the home page's counter is exactly
+that). And if a page doesn't qualify, nothing fails silently — the frontend build dies with a
+descriptive error, so a wrongly-marked page can't reach production.
+
+### How serving works
+
+`vite build` (via `adapter-static`) writes each prerendered page as `<path>.html` (`/about` →
+`about.html`, `/` → `index.html`) plus one SPA shell, and Gradle packages it all into the boot jar
+under `classpath:/static/`. At runtime `config/WebConfig.java` resolves a request in this order:
+
+1. an existing file (`/about.html`, `/_app/...`, `/favicon.svg`) is served as-is;
+2. an extensionless non-API path with a matching prerendered page (`/about` → `about.html`) gets
+   that page's own HTML;
+3. any other extensionless non-API path (an SPA deep link like `/todos` or `/some/route`) gets the
+   SPA shell, and the client router takes over after hydration;
+4. everything else keeps default Spring Boot behavior: API paths return a JSON 404, missing assets
+   a plain 404.
+
+### Why the shell lives at `_app/fallback.html`
+
+The fallback shell is deliberately written **inside `_app/`** (SvelteKit's `appDir`, home of the
+built JS/CSS). A shell named like a regular page (`fallback.html`, `200.html`, ...) can collide
+with a prerendered route of the same name (`/fallback`), which `adapter-static` resolves by
+silently overwriting the page with the shell — and no "clever" filename is truly safe, because
+prerender output filenames come from decoded URL paths, which can contain nearly anything.
+`_app/` is different: the SvelteKit server hard-404s every `/_app/*` request before route matching
+even runs, so no route — prerendered or not, however encoded — can ever produce a file there. A
+colliding route attempt fails the frontend build with a loud `404 /_app/...` error instead of
+silently shipping a broken page. The only writer into `_app/` is SvelteKit itself, and its output
+set (`version.json`, `env.js`, `immutable/**`) never contains `fallback.html`. If you ever rename
+`kit.appDir`, move the `fallback` path in `web/svelte.config.js` (and the constant in
+`config/WebConfig.java`) along with it.
+
 ## Todo list (reference feature)
 
 The todo list (`/todos`) is a working example of the full stack wired end to end: a Flyway-managed
@@ -119,8 +182,10 @@ tests, and `web/src/lib/components/todo-list.svelte` + `web/src/routes/todos/`.
 - `docker-compose.yml` — development-only PostgreSQL 17
 - `src/main/java/dev/template/app/` — backend
   - `Application.java` — entry point
-  - `config/WebConfig.java` — SPA fallback: serves `index.html` for unknown, non-API routes
-    without a file extension so deep links into the SvelteKit app work on full page load
+  - `config/WebConfig.java` — SPA fallback: serves a prerendered page's own HTML when one
+    exists (e.g. `/about` → `about.html`), otherwise the `_app/fallback.html` shell, for
+    unknown, non-API routes without a file extension so deep links into the SvelteKit app
+    work on full page load (see [Static pages](#static-pages-build-time-prerendering))
   - `model/` — handwritten domain types; `repository/` — data access (`JdbcClient`);
     `service/` — business logic
   - `rest/` — implementations of the OpenAPI-generated controller interfaces
@@ -142,7 +207,8 @@ tests, and `web/src/lib/components/todo-list.svelte` + `web/src/routes/todos/`.
     of `@hey-api/openapi-ts`)
   - `src/lib/components/` — `counter.svelte`, `header.svelte`, `todo-list.svelte`, each with a
     matching `*.svelte.test.ts`
-  - `src/routes/` — `+page.svelte`, `about/+page.svelte`, `todos/+page.svelte`
+  - `src/routes/` — `+page.svelte`, `about/+page.svelte`, `todos/+page.svelte`; `+page.ts` files
+    next to `/` and `/about` mark them as prerendered static pages (see above)
   - `src/routes/page.e2e.ts`, `src/routes/todos/page.e2e.ts` — Playwright end-to-end tests
 
 ## Conventions
