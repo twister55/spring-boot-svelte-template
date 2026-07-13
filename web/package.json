@@ -20,12 +20,12 @@
 		"lint:fix": "svelte-kit sync && prettier --write . && eslint . --fix",
 		"test": "pnpm run test:unit --run && pnpm run test:e2e",
 		"test:unit": "vitest",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"knip": "knip"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
 		"@fontsource/fira-mono": "^5.2.7",
-		"@neoconfetti/svelte": "^2.2.2",
 		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.69.2",
@@ -44,6 +44,7 @@
 		"eslint-plugin-svelte": "^3.20.0",
 		"eslint-plugin-unused-imports": "^4.4.1",
 		"globals": "^17.7.0",
+		"knip": "^6.26.0",
 		"playwright": "^1.61.1",
 		"prettier": "^3.9.4",
 		"prettier-plugin-svelte": "^4.1.1",

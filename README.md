@@ -41,9 +41,10 @@ Environment variables:
 cd web
 pnpm run lint                 # svelte-kit sync + prettier --check + eslint
 pnpm run lint:fix             # svelte-kit sync + prettier --write + eslint --fix
-pnpm run format                # prettier --write
-pnpm run check                 # svelte-check
-pnpm run test                  # vitest (node + browser projects) + playwright e2e
+pnpm run format               # prettier --write
+pnpm run check                # svelte-check
+pnpm run knip                 # unused exports/dependencies/files
+pnpm run test                 # vitest (node + browser projects) + playwright e2e
 ```
 
 ## Structure
