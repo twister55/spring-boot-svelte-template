@@ -30,6 +30,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+    // database access + schema migrations (versions managed by the Spring Boot BOM).
+    // Spring Boot 4 modularized autoconfiguration: Flyway autoconfig lives in
+    // spring-boot-flyway (not spring-boot-autoconfigure), which pulls flyway-core.
+    // flyway-database-postgresql is required for PostgreSQL since Flyway 10.
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-flyway'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
     // required by the OpenAPI-generated controller interfaces
     implementation 'io.swagger.core.v3:swagger-annotations:2.2.52'
     implementation 'org.openapitools:jackson-databind-nullable:0.2.10'
@@ -43,10 +52,19 @@ dependencies {
     // (requires spring-boot-restclient); it used to ship with spring-boot-test.
     testImplementation 'org.springframework.boot:spring-boot-resttestclient'
     testImplementation 'org.springframework.boot:spring-boot-restclient'
+
+    // integration tests run against a real PostgreSQL via Testcontainers
+    // (versions managed by the Spring Boot BOM, which imports testcontainers-bom)
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
 }
 
 test {
     useJUnitPlatform()
+    // testcontainers (shaded docker-java) defaults to Docker API 1.32; newer daemons reject it
+    // (OrbStack requires >= 1.40). 'api.version' is the docker-java config key; 1.44 = Engine 25.
+    systemProperty 'api.version', '1.44'
 }
 
 jacoco {

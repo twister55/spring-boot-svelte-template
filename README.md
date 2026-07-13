@@ -6,6 +6,8 @@ with Tailwind CSS 4, built as a single Gradle project.
 ## Prerequisites
 
 - JDK 25 — must be installed locally (e.g. `brew install openjdk@25` or [Temurin 25](https://adoptium.net/temurin/releases/?version=25)).
+- Docker (or a compatible daemon like OrbStack) — runs the local PostgreSQL via docker-compose
+  and the Testcontainers-backed backend tests.
 - Node 24 for the Gradle build is downloaded automatically (node-gradle plugin).
 - For frontend development only: your own Node 24+ and pnpm 10+
   (pnpm settings live in `web/pnpm-workspace.yaml`).
@@ -13,6 +15,7 @@ with Tailwind CSS 4, built as a single Gradle project.
 ## Quick start
 
 ```bash
+docker compose up -d --wait   # PostgreSQL 17 on :5432 (data persists in ./.volumes/)
 ./gradlew bootRun             # backend + built frontend on :8080, `local` profile active
 ```
 
@@ -30,12 +33,14 @@ Environment variables:
 
 - `SERVER_PORT` — backend port for `./gradlew bootRun` (default 8080)
 - `APP_API_SERVER` — Vite proxy target for `/api` (default `http://localhost:8080`)
+- `DB_URL`, `DB_USER`, `DB_PASSWORD` — datasource; defaults point at the docker-compose
+  Postgres (`jdbc:postgresql://localhost:5432/app`, `app`/`app`)
 
 ## Commands
 
 ```bash
-./gradlew build               # full build: backend + frontend + tests
-./gradlew test                # backend tests
+./gradlew build               # full build: backend + frontend + tests (needs a Docker daemon)
+./gradlew test                # backend tests — need a running Docker daemon (Testcontainers)
 ./gradlew check               # build + tests
 
 cd web
@@ -75,8 +80,12 @@ both sides.
   - `Application.java` — entry point
   - `config/WebConfig.java` — SPA fallback: serves `index.html` for unknown, non-API routes
     without a file extension so deep links into the SvelteKit app work on full page load
-- `src/test/java/dev/template/app/` — `TestBase` (`@SpringBootTest`, random port, `test` profile),
-  `ApplicationTest`, `config/SpaFallbackResolverTest`
+  - `src/main/resources/db/migration/` — Flyway migrations (`V1__init.sql`, ...), applied at app
+    start and in tests; the datasource defaults in `application.yaml` point at the compose DB
+    and are overridable via `DB_URL`/`DB_USER`/`DB_PASSWORD`
+- `src/test/java/dev/template/app/` — `TestBase` (`@SpringBootTest`, random port, `test` profile,
+  shared PostgreSQL Testcontainer via `@ServiceConnection` — requires Docker), `ApplicationTest`,
+  `DatabaseSchemaTest`, `config/SpaFallbackResolverTest`
 - `web/` — SvelteKit SPA (adapter-static, served by Spring Boot as static resources)
   - `src/lib/api/` — API layer: `index.ts` (barrel re-exporting the generated SDK + the error
     interceptor turning failures into `ApiError`), `error.ts`, `generated/` (gitignored output

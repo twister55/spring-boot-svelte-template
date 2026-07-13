@@ -1,6 +1,11 @@
 spring:
   application:
     name: spring-boot-svelte-template
+  datasource:
+    # defaults point at the docker-compose instance; deployments override via env vars
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/app}
+    username: ${DB_USER:app}
+    password: ${DB_PASSWORD:app}
 
 server:
   port: 8080
