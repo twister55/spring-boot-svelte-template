@@ -34,6 +34,10 @@ dependencies {
     implementation 'io.swagger.core.v3:swagger-annotations:2.2.52'
     implementation 'org.openapitools:jackson-databind-nullable:0.2.10'
 
+    // model -> OpenAPI-DTO mapping (mappers in rest/mapping, see CentralMapperConfig)
+    implementation 'org.mapstruct:mapstruct:1.6.3'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     // Spring Boot 4 moved TestRestTemplate into the spring-boot-resttestclient module
     // (requires spring-boot-restclient); it used to ship with spring-boot-test.
